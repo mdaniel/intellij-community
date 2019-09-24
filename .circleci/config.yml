@@ -9,11 +9,23 @@ jobs:
         keys:
         - &cache_key v1-intellij-community
     - run: |
+        as_root=''
+        if [ $UID -ne 0 ]; then
+          as_root=sudo
+        fi
+        $as_root apt-get update
+        # needed for the windows package builder
+        $as_root apt-get install -y libz-dev
+        
         if [ ! -e "$HOME/jdk/bin/javac" ]; then
-          curl -vJLO https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-8u222-linux-x64-b1626.3.tar.gz
-          mkdir ~/jdk
-          tar -xzf jbrsdk*gz -C ~/jdk
-          rm jbrsdk*.gz
+          mkdir -p ~/.cache
+          jburl=https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-8u222-linux-x64-b1626.3.tar.gz
+          jdkfn="$HOME/.cache/$(basename $jburl)"
+          if [ ! -e      "$jdkfn" ]; then
+            curl -fsSJLo "$jdkfn" "$jburl"
+          fi
+          mkdir -p ~/jdk
+          tar -xzf "$jdkfn" -C ~/jdk
         fi
         export JAVA_HOME=$HOME/jdk
         PATH=$JAVA_HOME/bin:$PATH
@@ -36,7 +48,8 @@ jobs:
         paths:
         - android/.git
         - android/tools-base/.git
-        - ~/.m2
+        - ~/.cache
         - ~/.gradle
+        - ~/.m2
     - store_artifacts:
         path: out/idea-ce/release/artifacts
