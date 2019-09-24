@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 jobs:
   build:
     docker:
@@ -52,4 +52,4 @@ jobs:
         - ~/.gradle
         - ~/.m2
     - store_artifacts:
-        path: out/idea-ce/release/artifacts
+        path: out/idea-ce/artifacts
