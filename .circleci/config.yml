@@ -1,48 +1,52 @@
 version: 2.1
 jobs:
-  build:
+  ij:
     docker:
-    - image: circleci/openjdk:8-jdk
+    - image: &docker_image circleci/openjdk:8-jdk
     steps:
     - checkout
-    - restore_cache:
+    - restore_cache: &restore_cache
         keys:
         - &cache_key v1-intellij-community
+    - run:
+        name: prepare workspace
+        command: &prep |
+            as_root=''
+            if [ $UID -ne 0 ]; then
+                as_root=sudo
+            fi
+            $as_root apt-get update
+            # needed for the windows package builder
+            $as_root apt-get install -y libz-dev
+
+            if [ ! -e "$HOME/jdk/bin/javac" ]; then
+                mkdir -p ~/.cache
+                jburl=https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-8u222-linux-x64-b1626.3.tar.gz
+                jdkfn="$HOME/.cache/$(basename $jburl)"
+                if [ ! -e      "$jdkfn" ]; then
+                    curl -fsSJLo "$jdkfn" "$jburl"
+                fi
+                mkdir -p ~/jdk
+                tar -xzf "$jdkfn" -C ~/jdk
+            fi
+            export JAVA_HOME=$HOME/jdk
+            PATH=$JAVA_HOME/bin:$PATH
+            export JDK_18_x64=$JAVA_HOME
+            export JDK_16_x64=$JAVA_HOME
+            if [ ! -e android/.git ]; then
+                bash -x ./getPlugins.sh
+            else
+                for d in android android/tools-base; do
+                    cd $d
+                    git fetch --all
+                    git reset --hard origin/master
+                    cd -
+                done
+            fi
     - run: |
-        as_root=''
-        if [ $UID -ne 0 ]; then
-          as_root=sudo
-        fi
-        $as_root apt-get update
-        # needed for the windows package builder
-        $as_root apt-get install -y libz-dev
-        
-        if [ ! -e "$HOME/jdk/bin/javac" ]; then
-          mkdir -p ~/.cache
-          jburl=https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-8u222-linux-x64-b1626.3.tar.gz
-          jdkfn="$HOME/.cache/$(basename $jburl)"
-          if [ ! -e      "$jdkfn" ]; then
-            curl -fsSJLo "$jdkfn" "$jburl"
-          fi
-          mkdir -p ~/jdk
-          tar -xzf "$jdkfn" -C ~/jdk
-        fi
-        export JAVA_HOME=$HOME/jdk
-        PATH=$JAVA_HOME/bin:$PATH
-        export JDK_18_x64=$JAVA_HOME
-        export JDK_16_x64=$JAVA_HOME
-        if [ ! -e android/.git ]; then
-            bash -x ./getPlugins.sh
-        else
-          for d in android android/tools-base; do
-            cd $d
-            git fetch --all
-            git reset --hard origin/master
-            cd -
-          done
-        fi
         ant -debug
-    - save_cache:
+        rm -rf out/idea-ic/artifacts/maven-artifacts
+    - save_cache: &save_cache
         when: always
         key: *cache_key
         paths:
@@ -53,3 +57,28 @@ jobs:
         - ~/.m2
     - store_artifacts:
         path: out/idea-ce/artifacts
+
+  pycharm:
+    docker:
+    - image: *docker_image
+    steps:
+    - checkout
+    - restore_cache:
+        <<: *restore_cache
+    - run:
+        name: prepare workspace
+        command: *prep
+    - run: |
+        ant -debug -f python/build.xml
+        rm -rf out/python-ce/artifacts/maven-artifacts
+    - save_cache:
+        <<: *save_cache
+    - store_artifacts:
+        path: out/pycharm-ce/artifacts
+
+workflows:
+  version: 2
+  build:
+    jobs:
+    - ij
+    - pycharm
