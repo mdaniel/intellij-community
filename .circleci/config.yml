@@ -75,7 +75,7 @@ jobs:
               platform/build-scripts/groovy/org/jetbrains/intellij/build/impl/BuildTasksImpl.groovy; do
               sed -i~ -e 's/Xmx[0-9]*m/Xmx2G/' $i
           done
-          git diff || true
+          PAGER=cat git diff || true
           ant -debug -f python/build.xml
           rm -rf out/python-ce/artifacts/maven-artifacts
     - save_cache:
