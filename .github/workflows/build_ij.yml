@@ -35,7 +35,7 @@ jobs:
       run: |
         set -ex
         set -o pipefail
-        sed -e 's/^/git clone/git clone --depth=1/' getPlugins.sh | bash -x
+        sed -e 's/^git clone/git clone --depth=1/' getPlugins.sh | bash -x
 
     - name: reset plugins HEAD
       if: steps.get-plugins.outputs.cache-hit == 'true'
