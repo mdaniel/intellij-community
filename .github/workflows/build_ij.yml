@@ -1,0 +1,53 @@
+name: Java CI with Ant
+on:
+  schedule:
+  - cron: "0 */4 * * *"
+  push:
+    branches:
+    - master
+    - github-ci
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+      # it now does shallow cloning by default
+
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+
+    - name: plugins git repo
+      id: get-plugins
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/android/.git
+        key: ${{ hashFiles('getPlugins.sh') }}
+
+    - name: fetch plugins
+      if: steps.get-plugins.outputs.cache-hit != 'true'
+      run: |
+        set -ex
+        set -o pipefail
+        printenv
+        java -version
+        ant -version
+
+    - name: reset plugins HEAD
+      if: steps.get-plugins.outputs.cache-hit == 'true'
+      run: |
+        cd android
+        git fetch
+        git checkout --force master
+        git clean -xdf
+        git reset --hard origin/master
+
+    - name: build
+      run: |
+        ant -debug
