@@ -17,10 +17,17 @@ jobs:
       uses: actions/checkout@v2
       # it now does shallow cloning by default
 
+    - name: Set up JDK 8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 8
+        java-package: jdk+fx
+
     - name: Set up JDK 11
       uses: actions/setup-java@v1
       with:
         java-version: 11
+        java-package: jdk+fx
 
     - name: plugins git repo
       id: get-plugins
